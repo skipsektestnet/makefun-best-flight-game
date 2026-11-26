@@ -44,7 +44,9 @@ export function stepMission(state, flight, dt, onEvent) {
       let points = RINGS.passScore;
       if (ring.centre) points += RINGS.centreBonus;
       state.score += points;
-      state.course.setState(ring.userData.index, 'done');
+      // checkPass returns the plain ring record (no userData — that lives
+      // on the mesh); its index is the one checkPass just advanced past.
+      state.course.setState(state.course.nextIndex - 1, 'done');
       state.course.setState(state.course.nextIndex, 'next');
       onEvent(ring.centre ? 'ring-centre' : 'ring', state.ringsPassed, state.mission.rings);
       if (state.ringsPassed >= state.mission.rings) onEvent('all-rings');
