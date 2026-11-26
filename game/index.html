@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kutilang Valley Run — a flight game</title>
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b1c2c; }
+  #scene { position: fixed; inset: 0; display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; font-family: "Segoe UI", system-ui, sans-serif; color: #eaf6ff; }
+  .panel { position: absolute; background: rgba(6, 22, 34, 0.62); border: 1px solid rgba(150, 220, 255, 0.35);
+           border-radius: 8px; padding: 8px 12px; backdrop-filter: blur(2px); }
+  #flight-data { top: 12px; left: 12px; min-width: 210px; }
+  #flight-data .big { font-size: 26px; font-weight: 700; line-height: 1.15; letter-spacing: 0.5px; }
+  #flight-data .row { display: flex; justify-content: space-between; gap: 18px; font-size: 14px; }
+  #flight-data .row b { font-variant-numeric: tabular-nums; }
+  #flight-data .label { color: #9fd4ef; font-size: 11px; letter-spacing: 1.5px; }
+  #mission-box { top: 12px; right: 12px; width: 250px; text-align: right; }
+  #mission-box .title { font-size: 15px; font-weight: 700; color: #ffd98a; }
+  #mission-box .detail { font-size: 13px; margin-top: 4px; line-height: 1.35; }
+  #mission-box .sub { font-size: 12px; color: #9fd4ef; margin-top: 4px; }
+  #horizon-box { left: 12px; bottom: 12px; width: 132px; text-align: center; }
+  #horizon-box canvas { display: block; margin: 2px auto 4px; border-radius: 50%; border: 2px solid rgba(150, 220, 255, 0.5); }
+  #horizon-box .label { font-size: 11px; letter-spacing: 1.5px; color: #9fd4ef; }
+  #throttle-box { right: 12px; bottom: 12px; width: 150px; }
+  #throttle-box .label { font-size: 11px; letter-spacing: 1.5px; color: #9fd4ef; }
+  #throttle-bar { height: 10px; background: rgba(255,255,255,0.15); border-radius: 5px; margin-top: 5px; overflow: hidden; }
+  #throttle-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #37c978, #ffd23e); }
+  #fuel-bar { height: 10px; background: rgba(255,255,255,0.15); border-radius: 5px; margin-top: 6px; overflow: hidden; }
+  #fuel-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff9a3d, #ff5a3d); }
+  #message { top: 86px; left: 50%; transform: translateX(-50%); font-size: 20px; font-weight: 700;
+             color: #ffe9a8; text-shadow: 0 2px 8px rgba(0,0,0,0.7); white-space: nowrap; }
+  #screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(4, 14, 24, 0.55); pointer-events: none; }
+  #screen .card { max-width: 560px; background: rgba(6, 26, 40, 0.92); border: 1px solid rgba(150, 220, 255, 0.4);
+                  border-radius: 12px; padding: 26px 32px; text-align: center; color: #eaf6ff;
+                  font-family: "Segoe UI", system-ui, sans-serif; }
+  #screen h1 { margin: 0 0 6px; font-size: 34px; letter-spacing: 1px; color: #ffd98a; }
+  #screen h2 { margin: 0 0 10px; font-size: 18px; color: #9fd4ef; font-weight: 600; }
+  #screen p { font-size: 15px; line-height: 1.5; margin: 8px 0; }
+  #screen .keys { font-size: 13px; color: #cfe9f7; line-height: 1.7; }
+  #screen .keys b { color: #fff; background: rgba(255,255,255,0.14); border-radius: 4px; padding: 1px 6px; }
+  #screen .go { margin-top: 14px; font-size: 16px; font-weight: 700; color: #8dffb0; }
+  .hidden { display: none !important; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="hud">
+  <div id="flight-data" class="panel">
+    <div class="label">KUTILANG ONE &middot; ALT &middot; SPEED &middot; HDG</div>
+    <div class="big"><span id="alt">0</span> ft &middot; <span id="spd">0</span> kt</div>
+    <div class="row"><span>HDG <b id="hdg">360&deg;</b></span><span>VS <b id="vs">0</b> fpm</span></div>
+    <div class="row"><span>GEAR <b id="gear">DOWN</b></span><span>FLAPS <b id="flaps">UP</b></span></div>
+  </div>
+  <div id="mission-box" class="panel">
+    <div class="title" id="mission-title">SORTIE 1 &mdash; RIVER RUN</div>
+    <div class="detail" id="mission-detail">Take off from Runway 36, fly the amber rings, land back home.</div>
+    <div class="sub" id="mission-progress">Rings 0 / 6 &middot; Score 0</div>
+  </div>
+  <div id="horizon-box" class="panel">
+    <canvas id="horizon" width="112" height="112"></canvas>
+    <div class="label">ATTITUDE</div>
+  </div>
+  <div id="throttle-box" class="panel">
+    <div class="label">THROTTLE <span id="thr-pct" style="color:#fff">0%</span></div>
+    <div id="throttle-bar"><div id="throttle-fill"></div></div>
+    <div class="label" style="margin-top:6px">FUEL <span id="fuel-pct" style="color:#fff">100%</span></div>
+    <div id="fuel-bar"><div id="fuel-fill"></div></div>
+  </div>
+  <div id="message" class="hidden"></div>
+</div>
+<div id="screen"><div class="card" id="screen-card"></div></div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
